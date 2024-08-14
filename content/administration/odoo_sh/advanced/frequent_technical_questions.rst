@@ -30,35 +30,31 @@ We advise that:
   `idempotent <https://stackoverflow.com/a/1077421/3332416>`_: they must not
   cause side-effects if they are started more often than expected.
 
+.. _ip-address-change:
+
 How can I automate tasks when an IP address change occurs?
 ----------------------------------------------------------
 
-**Odoo.sh notifies project administrators of IP modifications.**
-Additionally, when the IP address of a production instance changes, a `GET` HTTP request is sent to
-the path `/_odoo.sh/ip-change` with the new IP address provided as an `ip` query string argument.
+**Odoo.sh notifies project administrators of IP address changes.**
+Additionally when the IP address of a production instance changes, an HTTP `GET` request is made
+to the path `/_odoo.sh/ip-change` with the new IP address included as a query string parameter
+(`new`), along with the previous IP address as an additional parameter (`old`).
 
 This mechanism allows custom actions to be applied in response to the IP address change
 (eg: sending an email, contacting a firewall API, configuring database objects, ...)
 
-For security reasons, the `/_odoo.sh/ip-change` route on the production instance is only accessible
-by Odoo.sh itself, returning a `403` error if accessed directly. On other instance stages
-(development, staging) the route remains accessible for testing purposes.
+For security reasons, the `/_odoo.sh/ip-change` route is accessible only internally by the platform
+itself and returns a `403` response if accessed through any other means.
 
-Here’s a pseudo implementation example:
+Here is a pseudo implementation example:
 
 .. code-block:: python
 
-    class MyController(http.Controller):
+    class IPChangeController(http.Controller):
 
         @http.route('/_odoo.sh/ip-change', auth='public')
-        def ip_change(self, ip=None, old=None):
-            # The ODOO_STAGE variable allows to protects the action from occurring on a staging
-            # or development instance while allowing custom testing scenarios if required.
-            if os.getenv('ODOO_STAGE') == 'production':
-                _logger.info("IP address changed from %s to %s", old, ip)
-                # Then perform whatever action required for your use-case:
-                # eg: update an ir.config_paramater, send an email, contact another service, ...
-            else:
-                _logger.info("Simulation of IP address change from %s to %s", old, ip)
-                # Then perform whatever action for testing your use-case (if required)
+        def ip_change(self, old=None, new=None):
+            _logger.info("IP address changed from %s to %s", old, new)
+            # Then perform whatever action required for your use-case, eg: update an
+            # ir.config_parameter, send an email, contact an external firewall service's API, ...
             return 'ok'
